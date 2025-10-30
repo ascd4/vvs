@@ -1,4 +1,3 @@
-// routes/events.js
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
@@ -6,7 +5,7 @@ const path = require("path");
 const connectDB = require("../config/db");
 const { authenticateJWT } = require("../middleware/authJWT");
 
-// Image upload config
+// --- Image upload config ---
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname)),
@@ -22,7 +21,7 @@ const upload = multer({
   },
 });
 
-// CREATE EVENT
+// --- CREATE EVENT ---
 router.post("/create", authenticateJWT, upload.single("image"), async (req, res) => {
   try {
     const db = await connectDB();
@@ -44,6 +43,24 @@ router.post("/create", authenticateJWT, upload.single("image"), async (req, res)
     res.status(201).json({ message: "✅ Event created successfully", eventId: result.insertId });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Internal server error", error: err.message });
+  }
+});
+
+// --- GET MY EVENTS (Draft / Pending / Approved) ---
+router.get("/my", authenticateJWT, async (req, res) => {
+  try {
+    const db = await connectDB();
+    const userId = req.user.id;
+
+    const [events] = await db.query(
+      "SELECT * FROM event WHERE EventOrgID = ? AND Status IN ('Draft','Pending','Approved')",
+      [userId]
+    ); 
+
+    res.json({ message: "User events fetched successfully", events });
+  } catch (err) {
+    console.error("✗ Fetch user events error:", err);
     res.status(500).json({ message: "Internal server error", error: err.message });
   }
 });
